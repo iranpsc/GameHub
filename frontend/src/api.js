@@ -1,5 +1,6 @@
 export const getApiBase = () => {
-  const raw = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+  const viteEnv = (typeof import.meta !== 'undefined' && import.meta && import.meta.env) ? import.meta.env : {}
+  const raw = viteEnv.VITE_API_URL || 'http://localhost:8000/api/v1'
   return raw.replace(/\/?v1\/?$/, '')
 }
 

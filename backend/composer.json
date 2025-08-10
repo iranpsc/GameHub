@@ -56,6 +56,9 @@
         "test": [
             "@php artisan config:clear --ansi",
             "@php artisan test"
+        ],
+        "test:coverage": [
+            "@php -d xdebug.mode=coverage -d xdebug.start_with_request=yes vendor/bin/phpunit --coverage-text"
         ]
     },
     "extra": {
