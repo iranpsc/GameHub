@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom'
 import { authorizedFetch, clearAuth, fetchJsonOrThrow, getAuthToken, getApiBase, redirectToLogin } from './api'
 
-function Dashboard() {
+export function Dashboard() {
   const [creditBalance, setCreditBalance] = useState(null)
   const [remainingTime, setRemainingTime] = useState(null)
   const [error, setError] = useState('')
@@ -116,7 +116,7 @@ function Dashboard() {
   )
 }
 
-function AdminUsers() {
+export function AdminUsers() {
   const apiBase = useMemo(() => `${getApiBase()}/v1`, [])
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(false)
@@ -243,7 +243,7 @@ function AdminUsers() {
   )
 }
 
-function AdminRecharge() {
+export function AdminRecharge() {
   const apiBase = useMemo(() => getApiBase(), [])
   const [form, setForm] = useState({ user_id: '', amount: '', description: '' })
   const [status, setStatus] = useState('')
@@ -289,7 +289,7 @@ function AdminRecharge() {
   )
 }
 
-function AdminLogs() {
+export function AdminLogs() {
   const apiBase = useMemo(() => getApiBase(), [])
   const [logs, setLogs] = useState([])
   const [filters, setFilters] = useState({ user_id: '', action_type: '' })
@@ -349,7 +349,7 @@ function AdminLogs() {
   )
 }
 
-function AdminSessions() {
+export function AdminSessions() {
   const apiBase = useMemo(() => getApiBase(), [])
   const [sessions, setSessions] = useState([])
   const [filters, setFilters] = useState({ user_id: '', active: '' })

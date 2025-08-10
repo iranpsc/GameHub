@@ -17,11 +17,13 @@ Useful commands:
 - Migrate: `php artisan migrate`
 - Serve API: `php artisan serve` (serves at `http://localhost:8000`)
 - Routes: `php artisan route:list`
+- Tests: `composer test` (coverage: `composer run test:coverage`)
 
 ## Frontend
 
 - Install: `cd frontend && npm install`
 - Dev: `npm run dev` (default at `http://localhost:5173`)
+- Tests: `npm test` (coverage: `npm run test:coverage`)
 
 Tailwind is configured via `tailwind.config.js` and `postcss.config.js`. CSS imports are in `src/index.css`.
 
@@ -40,6 +42,14 @@ Tailwind is configured via `tailwind.config.js` and `postcss.config.js`. CSS imp
 
 - Health: `GET /api/v1/health`
 - Users: CRUD at `/api/v1/users`
+
+## Unified tests
+
+Run backend and frontend tests together with coverage:
+
+```
+bash -lc "cd backend && composer install && php -v && php -m | grep xdebug | cat; composer run test:coverage && cd ../frontend && npm ci && npm run test:coverage"
+```
 
 ## GitHub
 
