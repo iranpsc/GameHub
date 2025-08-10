@@ -61,4 +61,24 @@ class AuthController extends Controller
                 : 'If an account exists for that email, a password reset link has been sent.'
         ]);
     }
+
+    public function logout(): JsonResponse
+    {
+        // Logout of session-based auth (if used)
+        if (auth('web')->check()) {
+            auth('web')->logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+        }
+
+        // Revoke current Sanctum token (API auth)
+        $user = auth()->user();
+        if ($user && $user->currentAccessToken()) {
+            $user->currentAccessToken()->delete();
+        }
+
+        return response()->json([
+            'message' => 'Logged out'
+        ]);
+    }
 }

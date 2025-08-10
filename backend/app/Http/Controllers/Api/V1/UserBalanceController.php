@@ -8,15 +8,19 @@ use Illuminate\Http\JsonResponse;
 
 class UserBalanceController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum');
+    }
+
     public function show(): JsonResponse
     {
-        // In a real app, this should use the authenticated user
-        $user = auth()->user() ?? User::query()->first();
+        $user = auth()->user();
 
         if (! $user) {
             return response()->json([
-                'message' => 'User not found.'
-            ], 404);
+                'message' => 'Unauthenticated.'
+            ], 401);
         }
 
         return response()->json([
