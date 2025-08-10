@@ -59,3 +59,30 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Payments configuration
+
+Add the following to your `.env`:
+
+```
+# Choose: payir or zarinpal
+PAYMENT_GATEWAY=payir
+
+# Publicly reachable URL to receive callbacks
+PAYMENT_CALLBACK_URL="${APP_URL}/api/payment/callback"
+
+# Pay.ir
+PAYIR_API_KEY=
+PAYIR_BASE_URL=https://pay.ir/pg
+
+# Zarinpal
+ZARINPAL_MERCHANT_ID=
+ZARINPAL_BASE_URL=https://api.zarinpal.com/pg/v4
+ZARINPAL_GATEWAY_BASE=https://www.zarinpal.com/pg/StartPay
+ZARINPAL_SANDBOX=false
+```
+
+### Endpoints
+- POST `/api/payment/start` (auth required): `{ amount, gateway?, description? }` → returns `{ payment_url, transaction_id, gateway, authority }`
+- POST `/api/payment/callback` (gateway callback): will update transaction and user balance
+- POST `/api/admin/recharge` (auth admin): `{ user_id, amount, description? }` → recharges instantly

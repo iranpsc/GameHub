@@ -24,6 +24,7 @@ class User extends Authenticatable
         'email',
         'mobile',
         'password',
+        'is_admin',
         'credit_balance',
         'remaining_time',
     ];
@@ -45,12 +46,13 @@ class User extends Authenticatable
      */
     protected function casts(): array
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'credit_balance' => 'decimal:2',
-            'remaining_time' => 'integer',
-        ];
+                    return [
+                'email_verified_at' => 'datetime',
+                'password' => 'hashed',
+                'is_admin' => 'boolean',
+                'credit_balance' => 'decimal:2',
+                'remaining_time' => 'integer',
+            ];
     }
 
     public function sessions(): HasMany
