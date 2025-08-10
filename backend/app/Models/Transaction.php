@@ -15,10 +15,17 @@ class Transaction extends Model
         'amount',
         'transaction_type',
         'payment_status',
+        'gateway',
+        'authority',
+        'reference_id',
+        'description',
+        'callback_url',
+        'meta',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'meta' => 'array',
     ];
 
     public function user(): BelongsTo
