@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background: #f9fafb; color: #111827; }
+      .card { max-width: 420px; margin: 10vh auto; background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.25rem; }
+      .title { font-weight: 700; font-size: 1.5rem; }
+      .sub { color: #6b7280; margin-top: .25rem; }
+      .btn { display: inline-block; margin-top: 1rem; background: #111827; color: white; padding: .5rem .75rem; border-radius: .375rem; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="title">Please log in</div>
+      <div class="sub">Your session has ended. Sign in again to continue.</div>
+      <a class="btn" href="/">Go to app</a>
+    </div>
+    <script>
+      try {
+        localStorage.removeItem('token');
+      } catch (e) {}
+    </script>
+  </body>
+</html>
