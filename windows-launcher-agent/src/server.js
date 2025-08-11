@@ -34,6 +34,7 @@ function writeLogLine(level, message) {
 }
 
 function logInfo(msg) { writeLogLine('INFO', msg); }
+function logWarn(msg) { writeLogLine('WARN', msg); }
 function logError(msg) { writeLogLine('ERROR', msg); }
 
 const host = process.env.HOST || '127.0.0.1';
@@ -73,20 +74,124 @@ app.use((req, res, next) => {
   next();
 });
 
-const appsConfigPath = path.join(appRoot, 'config', 'apps.json');
+// Resolve apps.json path (env override or default next to executable)
+const envConfigPath = process.env.APP_CONFIG_PATH && String(process.env.APP_CONFIG_PATH).trim() !== ''
+  ? path.resolve(process.env.APP_CONFIG_PATH)
+  : '';
+const defaultAppsConfigPath = path.join(appRoot, 'config', 'apps.json');
+const appsConfigPath = envConfigPath || defaultAppsConfigPath;
+
 let apps = [];
+
+function getDefaultConfigArray() {
+  return [
+    {
+      name: 'VLC Player',
+      path: 'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe',
+    },
+    {
+      name: 'Notepad',
+      path: 'C:\\Windows\\System32\\notepad.exe',
+    },
+  ];
+}
+
+function writeDefaultConfig(targetPath, isDefaultLocation) {
+  try {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  } catch (_) {}
+  const defaultArray = getDefaultConfigArray();
+  const json = JSON.stringify(defaultArray, null, 2);
+  try {
+    fs.writeFileSync(targetPath, json, 'utf8');
+  } catch (e) {
+    logError(`Failed to write default apps.json at ${targetPath}: ${e.message}`);
+    return;
+  }
+  if (isDefaultLocation) {
+    // Required exact warning message for default location
+    logWarn('apps.json not found. A default config has been created in ./config/apps.json. Please update it with your applications.');
+  } else {
+    logWarn(`apps.json not found at ${targetPath}. A default config has been created there. Please update it with your applications.`);
+  }
+}
+
+function slugifyNameToId(name, existingIds) {
+  const base = String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'app';
+  let candidate = base;
+  let counter = 2;
+  while (existingIds.has(candidate)) {
+    candidate = `${base}-${counter++}`;
+  }
+  existingIds.add(candidate);
+  return candidate;
+}
+
+function normalizeApps(rawList) {
+  const existingIds = new Set();
+  const normalized = [];
+  for (const entry of rawList) {
+    if (!entry || typeof entry !== 'object') continue;
+    const name = String(entry.name || '').trim();
+    const exePath = String(entry.path || '').trim();
+    if (!name || !exePath) continue;
+    let id = typeof entry.id === 'string' && entry.id.trim() ? entry.id.trim() : '';
+    if (!id) {
+      id = slugifyNameToId(name, existingIds);
+    } else if (existingIds.has(id)) {
+      id = slugifyNameToId(`${name}-${id}`, existingIds);
+    } else {
+      existingIds.add(id);
+    }
+    const args = Array.isArray(entry.args) ? entry.args.filter((a) => typeof a === 'string') : [];
+    normalized.push({ id, name, path: exePath, args });
+  }
+  return normalized;
+}
+
 function loadAppsConfig() {
+  const isDefaultLocation = appsConfigPath === defaultAppsConfigPath;
+
+  // Create default if missing
+  try {
+    if (!fs.existsSync(appsConfigPath)) {
+      writeDefaultConfig(appsConfigPath, isDefaultLocation);
+    }
+  } catch (_) {}
+
+  // Load and parse
   try {
     const raw = fs.readFileSync(appsConfigPath, 'utf8');
-    const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.apps)) {
-      throw new Error('Invalid apps config format');
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      logError(`Invalid JSON in apps config (${appsConfigPath}): ${e.message}`);
+      writeDefaultConfig(appsConfigPath, isDefaultLocation);
+      parsed = getDefaultConfigArray();
     }
-    apps = parsed.apps;
-    logInfo(`Loaded ${apps.length} apps from config`);
+
+    let list;
+    if (Array.isArray(parsed)) {
+      list = parsed;
+    } else if (parsed && Array.isArray(parsed.apps)) {
+      list = parsed.apps;
+    } else {
+      logError(`Invalid apps config format in ${appsConfigPath}. Replacing with default.`);
+      writeDefaultConfig(appsConfigPath, isDefaultLocation);
+      list = getDefaultConfigArray();
+    }
+
+    apps = normalizeApps(list);
+    logInfo(`Loaded ${apps.length} apps from config (${appsConfigPath})`);
   } catch (err) {
     logError(`Failed to load apps config: ${err.message}`);
-    apps = [];
+    // Ensure we still have at least defaults in memory
+    try {
+      apps = normalizeApps(getDefaultConfigArray());
+    } catch (_) {
+      apps = [];
+    }
   }
 }
 loadAppsConfig();
