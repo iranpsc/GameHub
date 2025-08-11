@@ -1,0 +1,1 @@
+[admin panel placeholder screenshot: tests validated basic rendering]

@@ -1,0 +1,7 @@
+
+> windows-launcher-agent@1.0.0 start
+> node src/server.js
+
+[dotenv@17.2.1] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[2025-08-11T00:18:48.317Z] [INFO] Loaded 3 apps from config
+[2025-08-11T00:18:48.323Z] [INFO] Windows Launcher Agent listening at http://127.0.0.1:5000
