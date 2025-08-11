@@ -1,7 +1,10 @@
-{
-  "apps": [
-    { "id": "notepad", "name": "Notepad", "path": "C:\\Windows\\System32\\notepad.exe", "args": [] },
-    { "id": "calc", "name": "Calculator", "path": "C:\\Windows\\System32\\calc.exe", "args": [] },
-    { "id": "mspaint", "name": "Paint", "path": "C:\\Windows\\System32\\mspaint.exe", "args": [] }
-  ]
-}
+[
+  {
+    "name": "VLC Player",
+    "path": "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe"
+  },
+  {
+    "name": "Notepad",
+    "path": "C:\\Windows\\System32\\notepad.exe"
+  }
+]

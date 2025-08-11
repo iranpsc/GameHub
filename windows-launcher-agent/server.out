@@ -1,0 +1,5 @@
+[dotenv@17.2.1] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[2025-08-11T12:46:41.112Z] [ERROR] Invalid JSON in apps config (/workspace/windows-launcher-agent/custom/apps.json): Expected property name or '}' in JSON at position 2 (line 1 column 3)
+[2025-08-11T12:46:41.112Z] [WARN] apps.json not found at /workspace/windows-launcher-agent/custom/apps.json. A default config has been created there. Please update it with your applications.
+[2025-08-11T12:46:41.113Z] [INFO] Loaded 2 apps from config (/workspace/windows-launcher-agent/custom/apps.json)
+[2025-08-11T12:46:41.118Z] [INFO] Windows Launcher Agent listening at http://127.0.0.1:5057

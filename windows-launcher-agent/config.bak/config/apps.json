@@ -1,0 +1,10 @@
+[
+  {
+    "name": "VLC Player",
+    "path": "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe"
+  },
+  {
+    "name": "Notepad",
+    "path": "C:\\Windows\\System32\\notepad.exe"
+  }
+]
