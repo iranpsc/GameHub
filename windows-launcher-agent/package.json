@@ -6,7 +6,8 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "windows:install": "powershell -ExecutionPolicy Bypass -File scripts/install-as-scheduled-task.ps1",
-    "windows:uninstall": "powershell -ExecutionPolicy Bypass -File scripts/uninstall-scheduled-task.ps1"
+    "windows:uninstall": "powershell -ExecutionPolicy Bypass -File scripts/uninstall-scheduled-task.ps1",
+    "build:win": "mkdir -p ../release && npx pkg src/server.js --targets node18-win-x64 --output ../release/GameNet_Agent.exe && cp -r config ../release/config && cp -r public ../release/public && cp README.md ../release/README-agent.md"
   },
   "keywords": [],
   "author": "",
@@ -16,5 +17,14 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [
+      "config/**/*",
+      "public/**/*"
+    ]
   }
 }

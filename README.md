@@ -42,6 +42,41 @@ Technologies: Laravel, React, TailwindCSS, MySQL, Node.js (Windows Agent), Zarin
 
 ## Installation Guide
 
+### Download Windows Agent
+
+- Download the prebuilt Windows Agent: [Download Windows Agent](./release/GameNet_Agent.exe)
+
+Steps to install on each GameNet PC:
+- Place `GameNet_Agent.exe` anywhere (e.g., `C:\GameNet`)
+- First run will create a `logs` folder next to the exe
+- Configure allowed apps by creating `config\apps.json` next to the exe. Example:
+
+```json
+{
+  "apps": [
+    { "id": "notepad", "name": "Notepad", "path": "C:\\Windows\\System32\\notepad.exe", "args": [] }
+  ]
+}
+```
+
+Auto-start on login via Scheduled Task (PowerShell as Administrator):
+
+```powershell
+$exe = "C:\\GameNet\\GameNet_Agent.exe"  # update path as needed
+$action = New-ScheduledTaskAction -Execute $exe
+$trigger = New-ScheduledTaskTrigger -AtLogOn
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
+Register-ScheduledTask -TaskName "GameNetAgent" -Action $action -Trigger $trigger -Principal $principal -Settings $settings
+Start-ScheduledTask -TaskName "GameNetAgent"
+```
+
+- Agent endpoints (on the same PC):
+  - `GET http://localhost:5000/health`
+  - `GET http://localhost:5000/apps`
+  - `POST http://localhost:5000/launch` with JSON `{ "appId": "notepad", "args": [] }`
+- Optional security: next to the exe, create `.env` with `LAUNCH_TOKEN=your-strong-token`, then add header `x-launch-token` to requests
+
 ### Prerequisites
 
 - PHP 8.2+ and Composer

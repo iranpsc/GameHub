@@ -5,9 +5,36 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 
+// Determine application root depending on whether running from pkg executable or source
+const isPackaged = !!process.pkg;
+const appRoot = isPackaged
+  ? path.dirname(process.execPath)
+  : path.join(__dirname, '..');
+
+// Load environment from .env located next to the executable/source root
 try {
-  require('dotenv').config();
+  require('dotenv').config({ path: path.join(appRoot, '.env') });
 } catch (_) {}
+
+// Setup basic file logging
+const logsDir = path.join(appRoot, 'logs');
+try {
+  fs.mkdirSync(logsDir, { recursive: true });
+} catch (_) {}
+const logFilePath = path.join(logsDir, 'agent.log');
+let logStream;
+try {
+  logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+} catch (_) {}
+
+function writeLogLine(level, message) {
+  const line = `[${new Date().toISOString()}] [${level}] ${message}`;
+  try { process.stdout.write(line + '\n'); } catch (_) {}
+  try { if (logStream) logStream.write(line + '\n'); } catch (_) {}
+}
+
+function logInfo(msg) { writeLogLine('INFO', msg); }
+function logError(msg) { writeLogLine('ERROR', msg); }
 
 const host = process.env.HOST || '127.0.0.1';
 const port = Number(process.env.PORT || 5000);
@@ -46,7 +73,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const appsConfigPath = path.join(__dirname, '..', 'config', 'apps.json');
+const appsConfigPath = path.join(appRoot, 'config', 'apps.json');
 let apps = [];
 function loadAppsConfig() {
   try {
@@ -56,9 +83,9 @@ function loadAppsConfig() {
       throw new Error('Invalid apps config format');
     }
     apps = parsed.apps;
-    console.log(`Loaded ${apps.length} apps from config`);
+    logInfo(`Loaded ${apps.length} apps from config`);
   } catch (err) {
-    console.error('Failed to load apps config:', err.message);
+    logError(`Failed to load apps config: ${err.message}`);
     apps = [];
   }
 }
@@ -112,25 +139,54 @@ app.post('/launch', (req, res) => {
       shell: false,
     });
     child.unref();
-    console.log(
+    logInfo(
       `Launched ${appDef.name} (${exePath}) with args: ${finalArgs.join(' ')}`
     );
     res.status(202).json({ ok: true, launched: appDef.id });
   } catch (e) {
-    console.error('Failed to launch:', e);
+    logError(`Failed to launch: ${String(e && e.message ? e.message : e)}`);
     res.status(500).json({ error: 'Failed to launch', detail: String(e.message || e) });
   }
 });
 
-app.use(express.static(path.join(__dirname, '..', 'public')));
+const publicDir = path.join(appRoot, 'public');
+app.use(express.static(publicDir));
 
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  res.sendFile(path.join(publicDir, 'index.html'));
 });
 
-app.listen(port, host, () => {
-  console.log(`Windows Launcher Agent listening at http://${host}:${port}`);
+const server = app.listen(port, host, () => {
+  logInfo(`Windows Launcher Agent listening at http://${host}:${port}`);
   if (launchToken) {
-    console.log('Launch token is enabled (x-launch-token header)');
+    logInfo('Launch token is enabled (x-launch-token header)');
   }
+});
+
+function gracefulShutdown(signal) {
+  logInfo(`Received ${signal}. Shutting down gracefully...`);
+  try { if (logStream) { logStream.write(''); } } catch (_) {}
+  server.close(() => {
+    logInfo('HTTP server closed. Exiting.');
+    try { if (logStream) logStream.end(); } catch (_) {}
+    process.exit(0);
+  });
+  // Force exit if not closed in time
+  setTimeout(() => {
+    logError('Forcing shutdown after timeout');
+    try { if (logStream) logStream.end(); } catch (_) {}
+    process.exit(1);
+  }, 5000).unref();
+}
+
+['SIGINT', 'SIGTERM'].forEach((sig) => {
+  try { process.on(sig, () => gracefulShutdown(sig)); } catch (_) {}
+});
+
+process.on('uncaughtException', (err) => {
+  logError(`Uncaught exception: ${err && err.stack ? err.stack : err}`);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logError(`Unhandled rejection: ${reason}`);
 });
