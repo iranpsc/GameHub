@@ -40,6 +40,111 @@ const host = process.env.HOST || '127.0.0.1';
 const port = Number(process.env.PORT || 5000);
 const launchToken = process.env.LAUNCH_TOKEN || '';
 
+// --- First-run setup: ensure config exists, create defaults, and optionally auto-install Scheduled Task on Windows
+const configDir = path.join(appRoot, 'config');
+const appsConfigPath = path.join(configDir, 'apps.json');
+
+function ensureConfigDir() {
+  try {
+    fs.mkdirSync(configDir, { recursive: true });
+  } catch (err) {
+    logError(`Failed to create config directory: ${err.message}`);
+  }
+}
+
+function createDefaultEnvIfMissing() {
+  const envPath = path.join(appRoot, '.env');
+  if (!fs.existsSync(envPath)) {
+    const contents = [
+      `# Auto-generated on first run`,
+      `PORT=${port}`,
+      `HOST=${host}`,
+      `# LAUNCH_TOKEN=your-strong-token`,
+      `# Set LAUNCH_TOKEN and restart the agent to require x-launch-token header`,
+      `# Set AUTO_INSTALL_TASK=false to skip automatic Scheduled Task setup`,
+    ].join('\n');
+    try {
+      fs.writeFileSync(envPath, contents, 'utf8');
+      logInfo('Created .env with defaults');
+    } catch (err) {
+      logError(`Failed to create .env: ${err.message}`);
+    }
+  }
+}
+
+function createDefaultAppsIfMissing() {
+  if (!fs.existsSync(appsConfigPath)) {
+    const defaultApps = {
+      apps: [
+        { id: 'notepad', name: 'Notepad', path: 'C\\\\Windows\\\\System32\\\\notepad.exe', args: [] },
+      ],
+    };
+    try {
+      fs.writeFileSync(appsConfigPath, JSON.stringify(defaultApps, null, 2), 'utf8');
+      logInfo(`Created default apps config at ${appsConfigPath}`);
+    } catch (err) {
+      logError(`Failed to create default apps.json: ${err.message}`);
+    }
+  }
+}
+
+function installScheduledTaskIfMissing() {
+  const platform = os.platform();
+  const autoInstall = String(process.env.AUTO_INSTALL_TASK || 'true').toLowerCase() !== 'false';
+  if (!isPackaged || platform !== 'win32' || !autoInstall) {
+    return;
+  }
+
+  // Attempt to register a Scheduled Task to auto-start the packaged EXE on logon
+  const exePath = process.execPath;
+  const taskName = process.env.TASK_NAME || 'GameNetAgent';
+
+  // PowerShell script to check/install the task
+  const psScript = `
+$ErrorActionPreference = 'SilentlyContinue'
+$tn = '${taskName}'
+$existing = Get-ScheduledTask -TaskName $tn -ErrorAction SilentlyContinue
+if ($existing) { exit 0 }
+$action = New-ScheduledTaskAction -Execute '${exePath.replace(/'/g, "''")}'
+$trigger = New-ScheduledTaskTrigger -AtLogOn
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+try {
+  Register-ScheduledTask -TaskName $tn -Action $action -Trigger $trigger -Principal $principal -Settings $settings | Out-Null
+  Start-ScheduledTask -TaskName $tn | Out-Null
+  exit 0
+} catch {
+  Write-Output $_
+  exit 1
+}`;
+
+  try {
+    const ps = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript], {
+      stdio: 'ignore',
+      windowsHide: true,
+      shell: false,
+    });
+    ps.on('exit', (code) => {
+      if (code === 0) {
+        logInfo(`Scheduled Task '${taskName}' ensured (auto-start on logon)`);
+      } else {
+        logError(`Failed to install Scheduled Task automatically. Run as Administrator or execute scripts/install-as-scheduled-task.ps1`);
+      }
+    });
+  } catch (err) {
+    logError(`Error invoking PowerShell for Scheduled Task: ${err.message}`);
+  }
+}
+
+function runFirstRunSetup() {
+  ensureConfigDir();
+  createDefaultEnvIfMissing();
+  createDefaultAppsIfMissing();
+  installScheduledTaskIfMissing();
+}
+
+runFirstRunSetup();
+
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', false);
@@ -73,7 +178,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const appsConfigPath = path.join(appRoot, 'config', 'apps.json');
+const appsConfigPath_OLD = path.join(appRoot, 'config', 'apps.json');
 let apps = [];
 function loadAppsConfig() {
   try {

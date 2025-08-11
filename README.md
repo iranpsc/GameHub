@@ -48,18 +48,18 @@ Technologies: Laravel, React, TailwindCSS, MySQL, Node.js (Windows Agent), Zarin
 
 Steps to install on each GameNet PC:
 - Place `GameNet_Agent.exe` anywhere (e.g., `C:\GameNet`)
-- First run will create a `logs` folder next to the exe
-- Configure allowed apps by creating `config\apps.json` next to the exe. Example:
+- First run will automatically:
+  - Create a `logs` folder and `logs/agent.log`
+  - Ensure `config\apps.json` exists (a default with Notepad is created if missing)
+  - Create `.env` with default `PORT`/`HOST` if missing
+  - Attempt to auto-install a Scheduled Task to start at logon (disable with `AUTO_INSTALL_TASK=false` in `.env`)
+- Agent endpoints (on the same PC):
+  - `GET http://localhost:5000/health`
+  - `GET http://localhost:5000/apps`
+  - `POST http://localhost:5000/launch` with JSON `{ "appId": "notepad", "args": [] }`
+- Optional security: next to the exe, create `.env` with `LAUNCH_TOKEN=your-strong-token`, then add header `x-launch-token` to requests
 
-```json
-{
-  "apps": [
-    { "id": "notepad", "name": "Notepad", "path": "C:\\Windows\\System32\\notepad.exe", "args": [] }
-  ]
-}
-```
-
-Auto-start on login via Scheduled Task (PowerShell as Administrator):
+Manual Scheduled Task setup (if auto-install is disabled or fails):
 
 ```powershell
 $exe = "C:\\GameNet\\GameNet_Agent.exe"  # update path as needed
@@ -70,12 +70,6 @@ $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoi
 Register-ScheduledTask -TaskName "GameNetAgent" -Action $action -Trigger $trigger -Principal $principal -Settings $settings
 Start-ScheduledTask -TaskName "GameNetAgent"
 ```
-
-- Agent endpoints (on the same PC):
-  - `GET http://localhost:5000/health`
-  - `GET http://localhost:5000/apps`
-  - `POST http://localhost:5000/launch` with JSON `{ "appId": "notepad", "args": [] }`
-- Optional security: next to the exe, create `.env` with `LAUNCH_TOKEN=your-strong-token`, then add header `x-launch-token` to requests
 
 ### Prerequisites
 
