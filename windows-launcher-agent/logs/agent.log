@@ -1,2 +1,5 @@
 [2025-08-11T00:18:48.317Z] [INFO] Loaded 3 apps from config
 [2025-08-11T00:18:48.323Z] [INFO] Windows Launcher Agent listening at http://127.0.0.1:5000
+[2025-08-11T13:21:24.160Z] [INFO] Created .env with defaults
+[2025-08-11T13:21:24.162Z] [INFO] Loaded 3 apps from config
+[2025-08-11T13:21:24.168Z] [INFO] Windows Launcher Agent listening at http://127.0.0.1:5000
