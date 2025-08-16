@@ -65,15 +65,11 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 Add the following to your `.env`:
 
 ```
-# Choose: payir or zarinpal
-PAYMENT_GATEWAY=payir
+# Zarinpal only
+PAYMENT_GATEWAY=zarinpal
 
 # Publicly reachable URL to receive callbacks
 PAYMENT_CALLBACK_URL="${APP_URL}/api/payment/callback"
-
-# Pay.ir
-PAYIR_API_KEY=
-PAYIR_BASE_URL=https://pay.ir/pg
 
 # Zarinpal
 ZARINPAL_MERCHANT_ID=

@@ -15,7 +15,7 @@ class StartPaymentRequest extends FormRequest
     {
         return [
             'amount' => ['required', 'integer', 'min:1000'], // rials
-            'gateway' => ['nullable', 'in:payir,zarinpal'],
+            'gateway' => ['nullable', 'in:zarinpal'],
             'description' => ['nullable', 'string', 'max:191'],
         ];
     }

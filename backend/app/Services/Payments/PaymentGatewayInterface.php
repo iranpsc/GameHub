@@ -20,7 +20,7 @@ interface PaymentGatewayInterface
     public function verify(string $authority, int $amountInRials): array;
 
     /**
-     * Name of the gateway (e.g., payir or zarinpal)
+     * Name of the gateway (e.g., zarinpal)
      */
     public function getName(): string;
 }
