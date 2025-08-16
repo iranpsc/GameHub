@@ -221,7 +221,7 @@ Ensure `backend/.env` has `FRONTEND_URL=https://gatehide.com` for CORS, and `fro
 
 ### Nginx configuration (gatehide.com)
 
-Place under `/etc/nginx/sites-available/gatehide.com` and symlink to `sites-enabled`.
+Use the canonical config in `release/config/gatehide.nginx.conf`. Place under `/etc/nginx/sites-available/gatehide.com` and symlink to `sites-enabled`.
 
 ```
 # Redirect HTTP to HTTPS
@@ -242,47 +242,26 @@ server {
     ssl_certificate /etc/letsencrypt/live/gatehide.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/gatehide.com/privkey.pem;
 
-    # Frontend (Vite build) served at root
-    root /var/www/gatehide/frontend/dist;
-    index index.html;
+    # Default document root for PHP (Laravel)
+    root /var/www/gatehide/backend/public;
+    index index.php index.html;
 
-    # Serve frontend assets directly
+    # Frontend (Vite build) served at root
     location / {
+        root /var/www/gatehide/frontend/dist;
         try_files $uri $uri/ /index.html;
     }
 
-    # Laravel API under /api (serve backend/public)
-    location /api/ {
-        alias /var/www/gatehide/backend/public/;
-        index index.php;
-
-        # Static files within backend/public
-        location ~* \.(?:css|js|jpg|jpeg|png|gif|svg|ico|woff2?|ttf|eot)$ {
-            expires 7d;
-            add_header Cache-Control "public, max-age=604800";
-            try_files $uri =404;
-        }
-
-        # PHP handling for /api
-        location ~ \.php$ {
-            include fastcgi_params;
-            fastcgi_param SCRIPT_FILENAME $request_filename;
-            fastcgi_pass unix:/run/php/php8.2-fpm.sock; # adjust PHP version/socket
-            fastcgi_index index.php;
-        }
-
-        # Fallback to index.php for Laravel routing
-        location /api/ {
-            try_files $uri /index.php?$query_string;
-        }
+    # Laravel API under /api
+    location ^~ /api {
+        try_files $uri /index.php?$query_string;
     }
 
-    # Direct PHP for any other backend entrypoints in public (optional)
+    # PHP handling
     location ~ \.php$ {
-        root /var/www/gatehide/backend/public;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock; # adjust PHP version/socket
         fastcgi_index index.php;
     }
 
@@ -293,24 +272,54 @@ server {
 }
 ```
 
-### DirectAdmin / Apache quick setup (easiest)
+Quick commands (run on the server after deploying to `/var/www/gatehide`):
 
-- Recommended: use a subdomain for the API. Create `api.gatehide.com` and deploy the Laravel backend with its document root set to `backend/public`.
-  - Backend `.env`:
-    - `APP_URL=https://api.gatehide.com`
-    - `FRONTEND_URL=https://gatehide.com`
-  - Frontend `.env`:
-    - `VITE_API_URL=https://api.gatehide.com`
-- If you must keep `/api` under the same domain on Apache:
-  - Build the frontend and upload `frontend/dist/*` to `public_html/`.
-  - Upload the Laravel project anywhere outside web root (e.g., `~/domains/gatehide.com/private/backend`).
-  - Ask your host to map `/api` to `private/backend/public` (Apache `Alias /api ...`) or create a symlink `public_html/api -> private/backend/public` if allowed.
-  - Put the SPA fallback rules into `public_html/.htaccess` using `release/config/htaccess-frontend-spa.txt` so non-file routes serve `index.html`.
+```bash
+sudo ln -sf /var/www/gatehide/release/config/gatehide.nginx.conf /etc/nginx/sites-available/gatehide.com
+sudo ln -sf /etc/nginx/sites-available/gatehide.com /etc/nginx/sites-enabled/gatehide.com
+sudo nginx -t && sudo systemctl reload nginx
+# SSL (if not using DirectAdmin's built-in Let's Encrypt)
+sudo certbot --nginx -d gatehide.com -d www.gatehide.com
+```
+
+### DirectAdmin with Nginx (preferred and fastest)
+
+- Enable Nginx Reverse Proxy in DirectAdmin (Admin Level → CustomBuild → `nginx_apache` or pure `nginx`).
+- Create domain `gatehide.com`.
+- Upload build artifacts and backend to:
+  - `/domains/gatehide.com/public_html/` → frontend `dist` files
+  - `/domains/gatehide.com/private/backend` → entire `backend/` project (outside web root)
+- Install PHP 8.2 for the domain.
+- Run from SSH (User level):
+  ```bash
+  cd ~/domains/gatehide.com/private/backend
+  composer install --no-dev --optimize-autoloader --no-interaction
+  cp .env.example .env && php artisan key:generate
+  php artisan migrate --force
+  php artisan config:cache && php artisan route:cache
+  ```
+- Configure Nginx per-domain custom config snippet (DirectAdmin → Custom HTTPD Config → Nginx):
+  - Paste the `server` block content from `release/config/gatehide.nginx.conf` but adjust paths to:
+    - `root /home/USERNAME/domains/gatehide.com/public_html;` for frontend
+    - PHP location uses `fastcgi_pass unix:/var/run/php/php8.2-fpm-USERNAME.sock;` (DirectAdmin path varies)
+    - Map `/api` to `alias /home/USERNAME/domains/gatehide.com/private/backend/public;` OR set `document_root` to backend public and serve frontend via `location / { root ... }`
+- Set envs:
+  - Backend `.env`: `APP_URL=https://gatehide.com`, `FRONTEND_URL=https://gatehide.com`, DB creds, Zarinpal keys
+  - Frontend `.env`: `VITE_API_URL=https://gatehide.com/api`
+- SSL: enable Let’s Encrypt in DirectAdmin for `gatehide.com` and `www.gatehide.com`.
+
+### DirectAdmin (Apache-only fallback)
+
+- Use subdomain `api.gatehide.com` for Laravel; point document root to `private/backend/public`.
+- Frontend `dist` → `public_html/` of `gatehide.com`.
+- Add SPA fallback rules to `public_html/.htaccess` from `release/config/htaccess-frontend-spa.txt`.
+- Backend `.env`: `APP_URL=https://api.gatehide.com`, `FRONTEND_URL=https://gatehide.com`.
+- Frontend `.env`: `VITE_API_URL=https://api.gatehide.com`.
 
 Notes:
-- Ensure PHP 8.2 is selected for the domain in DirectAdmin (PHP Selector) and that `composer install` is executed inside `backend/`.
-- Create a MySQL database/user in DirectAdmin and put the credentials into `backend/.env`.
-- Run `php artisan migrate --force` from SSH (DirectAdmin has SSH access on many plans).
+- Ensure PHP 8.2 is selected and `composer install` is run in `backend/`.
+- Create DB in DirectAdmin and set creds in `.env`.
+- Run `php artisan migrate --force`.
 
 ---
 

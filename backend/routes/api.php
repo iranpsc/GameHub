@@ -30,7 +30,7 @@ Route::prefix('v1')->group(function () {
 
 // Payment endpoints (non-versioned for callback compatibility)
 Route::post('payment/start', [PaymentController::class, 'start']);
-Route::post('payment/callback', [PaymentController::class, 'callback']);
+Route::match(['GET','POST'], 'payment/callback', [PaymentController::class, 'callback']);
 
 // Admin endpoints
 Route::post('admin/recharge', [AdminRechargeController::class, 'store']);
