@@ -1,0 +1,19 @@
+# Place this in your domain's public_html/.htaccess on Apache/DirectAdmin
+# It rewrites all non-file, non-directory requests to /index.html for SPA routing,
+# but leaves /api/* to be handled by the backend.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Allow existing files and directories
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Exclude API paths (these should go to Laravel)
+    RewriteCond %{REQUEST_URI} ^/api/ [NC]
+    RewriteRule ^ - [L]
+
+    # Fallback to SPA entry point
+    RewriteRule ^ index.html [L]
+</IfModule>

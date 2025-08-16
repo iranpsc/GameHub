@@ -65,15 +65,14 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Already verified']);
         }
 
-        $gateway = PaymentFactory::make($txn->gateway);
-
-        // Some gateways set status to NOK on cancel
+        // Some gateways set status to NOK on cancel. In that case, do not call verify.
         if (strtolower($status) === 'nok' || strtolower($status) === 'failed' || strtolower($status) === 'error') {
             $txn->payment_status = 'failed';
             $txn->save();
             return response()->json(['message' => 'Payment failed']);
         }
 
+        $gateway = PaymentFactory::make($txn->gateway);
         $verification = $gateway->verify($authority, (int) $txn->amount);
 
         if ($verification['success']) {
