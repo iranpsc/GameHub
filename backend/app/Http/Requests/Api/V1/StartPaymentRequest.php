@@ -13,9 +13,13 @@ class StartPaymentRequest extends FormRequest
 
     public function rules(): array
     {
+        $allowed = ['zarinpal'];
+        if (app()->environment('testing')) {
+            $allowed[] = 'fake';
+        }
         return [
             'amount' => ['required', 'integer', 'min:1000'], // rials
-            'gateway' => ['nullable', 'in:zarinpal'],
+            'gateway' => ['nullable', 'in:' . implode(',', $allowed)],
             'description' => ['nullable', 'string', 'max:191'],
         ];
     }

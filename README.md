@@ -93,15 +93,15 @@ Edit `backend/.env` (production values shown):
 ```env
 APP_NAME="GameNet"
 APP_URL=https://gatehide.com
-FRONTEND_URL=https://gatehide.com:5173
+FRONTEND_URL=https://gatehide.com
 
 # Database
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=gatehide_db
-DB_USERNAME=gatehide_db
-DB_PASSWORD=4QNac8jhSMKpdpEZXAgm
+DB_USERNAME=gatehide_user
+DB_PASSWORD=your-db-password
 
 # Payments (Zarinpal only)
 PAYMENT_GATEWAY=zarinpal
@@ -204,16 +204,16 @@ npm start  # http://localhost:5000
 - Start frontend: `cd frontend && npm run dev` → `http://localhost:5173`
 - Start Windows Agent on the Windows kiosk PC: `npm start` in `windows-launcher-agent` → `http://localhost:5000`
 
-Ensure `backend/.env` has `FRONTEND_URL=https://gatehide.com:5173` for CORS, and `frontend/.env` uses `VITE_API_URL=https://gatehide.com/api`.
+Ensure `backend/.env` has `FRONTEND_URL=https://gatehide.com` for CORS, and `frontend/.env` uses `VITE_API_URL=https://gatehide.com/api` (or `https://api.gatehide.com` if using subdomain).
 
 ### Production mode (outline)
 
 - Backend
   - Set `APP_ENV=production` and `APP_DEBUG=false`
   - `php artisan config:cache && php artisan route:cache`
-  - Serve `backend/public` via Nginx with HTTPS (see sample config below)
+  - Serve `backend/public` via Nginx/Apache with HTTPS
 - Frontend
-  - `npm run build` and serve the built `frontend/dist` via the same Nginx
+  - `npm run build` and serve the built `frontend/dist` via the same domain
   - Set `VITE_API_URL` to the public API URL
 - Windows Agent
   - Install Scheduled Task via `scripts/install-as-scheduled-task.ps1`
@@ -292,6 +292,25 @@ server {
     add_header Referrer-Policy strict-origin-when-cross-origin;
 }
 ```
+
+### DirectAdmin / Apache quick setup (easiest)
+
+- Recommended: use a subdomain for the API. Create `api.gatehide.com` and deploy the Laravel backend with its document root set to `backend/public`.
+  - Backend `.env`:
+    - `APP_URL=https://api.gatehide.com`
+    - `FRONTEND_URL=https://gatehide.com`
+  - Frontend `.env`:
+    - `VITE_API_URL=https://api.gatehide.com`
+- If you must keep `/api` under the same domain on Apache:
+  - Build the frontend and upload `frontend/dist/*` to `public_html/`.
+  - Upload the Laravel project anywhere outside web root (e.g., `~/domains/gatehide.com/private/backend`).
+  - Ask your host to map `/api` to `private/backend/public` (Apache `Alias /api ...`) or create a symlink `public_html/api -> private/backend/public` if allowed.
+  - Put the SPA fallback rules into `public_html/.htaccess` using `release/config/htaccess-frontend-spa.txt` so non-file routes serve `index.html`.
+
+Notes:
+- Ensure PHP 8.2 is selected for the domain in DirectAdmin (PHP Selector) and that `composer install` is executed inside `backend/`.
+- Create a MySQL database/user in DirectAdmin and put the credentials into `backend/.env`.
+- Run `php artisan migrate --force` from SSH (DirectAdmin has SSH access on many plans).
 
 ---
 
