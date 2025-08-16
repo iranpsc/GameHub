@@ -8,7 +8,7 @@ A full-stack system for managing an internet/gaming café: users can register, l
 - Frontend: React (Vite) + TailwindCSS SPA
 - Windows Agent: Local Node.js HTTP service to launch whitelisted programs on Windows
 - Database: MySQL
-- Payments: Pay.ir or Zarinpal (selectable)
+- Payments: Zarinpal only
 
 ---
 
@@ -22,7 +22,7 @@ Based on use cases 1–7:
 2. User Account & Balance
    - View current balance via `/api/user/balance` or `/api/v1/user/balance`
 3. Online Recharge (Payments)
-   - Start payment via `/api/payment/start` (Pay.ir or Zarinpal)
+   - Start payment via `/api/payment/start` (Zarinpal)
    - Handle gateway callback via `/api/payment/callback`
 4. Program Launching (Windows Agent)
    - Local agent exposes `/health`, `/apps`, and `/launch` to start whitelisted apps
@@ -36,7 +36,7 @@ Based on use cases 1–7:
 7. Health & Monitoring
    - API health endpoint: `/api/v1/health`
 
-Technologies: Laravel, React, TailwindCSS, MySQL, Node.js (Windows Agent), Zarinpal/Pay.ir
+Technologies: Laravel, React, TailwindCSS, MySQL, Node.js (Windows Agent), Zarinpal
 
 ---
 
@@ -88,31 +88,24 @@ cp .env.example .env  # if not present
 php artisan key:generate
 ```
 
-Edit `backend/.env`:
+Edit `backend/.env` (production values shown):
 
 ```env
 APP_NAME="GameNet"
-APP_URL=http://localhost:8000
-FRONTEND_URL=http://localhost:5173
+APP_URL=https://gatehide.com
+FRONTEND_URL=https://gatehide.com:5173
 
 # Database
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=app_db
-DB_USERNAME=root
-DB_PASSWORD=secret
+DB_DATABASE=gatehide_db
+DB_USERNAME=gatehide_db
+DB_PASSWORD=4QNac8jhSMKpdpEZXAgm
 
-# Payments
-# Choose: payir or zarinpal
-PAYMENT_GATEWAY=payir
+# Payments (Zarinpal only)
+PAYMENT_GATEWAY=zarinpal
 PAYMENT_CALLBACK_URL="${APP_URL}/api/payment/callback"
-
-# Pay.ir
-PAYIR_API_KEY=
-PAYIR_BASE_URL=https://pay.ir/pg
-
-# Zarinpal
 ZARINPAL_MERCHANT_ID=
 ZARINPAL_BASE_URL=https://api.zarinpal.com/pg/v4
 ZARINPAL_GATEWAY_BASE=https://www.zarinpal.com/pg/StartPay
@@ -141,7 +134,7 @@ npm install
 Create `frontend/.env`:
 
 ```env
-VITE_API_URL=http://localhost:8000/api
+VITE_API_URL=https://gatehide.com/api
 ```
 
 Run the dev server:
@@ -211,61 +204,94 @@ npm start  # http://localhost:5000
 - Start frontend: `cd frontend && npm run dev` → `http://localhost:5173`
 - Start Windows Agent on the Windows kiosk PC: `npm start` in `windows-launcher-agent` → `http://localhost:5000`
 
-Ensure `backend/.env` has `FRONTEND_URL=http://localhost:5173` for CORS, and `frontend/.env` uses `VITE_API_URL=http://localhost:8000/api`.
+Ensure `backend/.env` has `FRONTEND_URL=https://gatehide.com:5173` for CORS, and `frontend/.env` uses `VITE_API_URL=https://gatehide.com/api`.
 
 ### Production mode (outline)
 
 - Backend
   - Set `APP_ENV=production` and `APP_DEBUG=false`
   - `php artisan config:cache && php artisan route:cache`
-  - Serve `backend/public` via Nginx/Apache, with HTTPS
+  - Serve `backend/public` via Nginx with HTTPS (see sample config below)
 - Frontend
-  - `npm run build` and serve the built `frontend/dist` via a static host or the same web server
+  - `npm run build` and serve the built `frontend/dist` via the same Nginx
   - Set `VITE_API_URL` to the public API URL
 - Windows Agent
   - Install Scheduled Task via `scripts/install-as-scheduled-task.ps1`
   - Set `LAUNCH_TOKEN` and configure allowed apps
 
-### Logging in
+### Nginx configuration (gatehide.com)
 
-- User:
-  - Register and login via frontend UI, or via API:
+Place under `/etc/nginx/sites-available/gatehide.com` and symlink to `sites-enabled`.
 
-    ```http
-    POST /api/register  { name, email, password }
-    POST /api/login     { email, password }
-    POST /api/logout    (Authorization: Bearer <token>)
-    ```
-
-- Admin:
-  - Use admin credentials provided by the project owner, or your deployment’s admin provisioning process. Admin-only endpoints are under `/api/admin/*`.
-
-### Launch programs from the dashboard
-
-- The frontend calls the Windows Agent on `http://localhost:5000` (from the kiosk PC)
-- API (Agent):
-  - `GET /apps`
-  - `POST /launch` with JSON: `{ "appId": "notepad", "args": [] }`
-  - If `LAUNCH_TOKEN` is set, add header `x-launch-token: <token>`
-
-### Recharge an account
-
-- User-initiated online recharge:
-  - `POST /api/payment/start` with `{ amount, gateway?, description? }`
-  - Complete payment on gateway; callback to `/api/payment/callback` updates balance
-- Admin recharge:
-  - `POST /api/admin/recharge` with `{ user_id, amount, description? }`
-
-### Test Kiosk mode
-
-- Open the frontend in full-screen kiosk mode on the Windows kiosk PC (Chrome example):
-
-```powershell
-# Replace URL with your frontend URL
-start chrome --kiosk --app=http://localhost:5173
 ```
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name gatehide.com www.gatehide.com;
+    return 301 https://gatehide.com$request_uri;
+}
 
-- Ensure the Windows Agent is running on the same machine and that apps are configured in `config/apps.json`
+# HTTPS server
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name gatehide.com;
+
+    # SSL certs (replace with your actual paths or use Certbot)
+    ssl_certificate /etc/letsencrypt/live/gatehide.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gatehide.com/privkey.pem;
+
+    # Frontend (Vite build) served at root
+    root /var/www/gatehide/frontend/dist;
+    index index.html;
+
+    # Serve frontend assets directly
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Laravel API under /api (serve backend/public)
+    location /api/ {
+        alias /var/www/gatehide/backend/public/;
+        index index.php;
+
+        # Static files within backend/public
+        location ~* \.(?:css|js|jpg|jpeg|png|gif|svg|ico|woff2?|ttf|eot)$ {
+            expires 7d;
+            add_header Cache-Control "public, max-age=604800";
+            try_files $uri =404;
+        }
+
+        # PHP handling for /api
+        location ~ \.php$ {
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+            fastcgi_pass unix:/run/php/php8.2-fpm.sock; # adjust PHP version/socket
+            fastcgi_index index.php;
+        }
+
+        # Fallback to index.php for Laravel routing
+        location /api/ {
+            try_files $uri /index.php?$query_string;
+        }
+    }
+
+    # Direct PHP for any other backend entrypoints in public (optional)
+    location ~ \.php$ {
+        root /var/www/gatehide/backend/public;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_index index.php;
+    }
+
+    # Security headers (tune as needed)
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header Referrer-Policy strict-origin-when-cross-origin;
+}
+```
 
 ---
 
@@ -310,7 +336,6 @@ Coverage tips:
 - Coding Standards
   - Backend: follow Laravel conventions; run `vendor/bin/pint` if configured
   - Frontend: ESLint rules; prefer functional components and hooks
-  - Commit messages: follow Conventional Commits when possible (e.g., `feat:`, `fix:`, `chore:`)
 - Tests
   - Add/maintain unit and integration tests for new features
 

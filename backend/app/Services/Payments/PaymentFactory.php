@@ -11,7 +11,6 @@ class PaymentFactory
         $name = $gatewayName ?: config('payment.default_gateway');
         $name = strtolower((string) $name);
         return match ($name) {
-            'payir' => new PayIrGateway(),
             'zarinpal' => new ZarinpalGateway(),
             default => throw new InvalidArgumentException("Unsupported gateway: {$name}"),
         };

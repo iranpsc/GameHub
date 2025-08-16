@@ -5,7 +5,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://gatehide.com'],
+    'allowed_origins' => array_values(array_filter([
+        (string) env('APP_URL', 'https://gatehide.com'),
+        (string) env('FRONTEND_URL', 'https://gatehide.com:5173'),
+    ])),
 
     'allowed_origins_patterns' => [],
 
