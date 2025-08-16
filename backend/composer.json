@@ -33,6 +33,9 @@
         }
     },
     "scripts": {
+        "pre-autoload-dump": [
+            "@php -r \"is_dir('bootstrap/cache') && array_map('unlink', array_filter((array) glob('bootstrap/cache/*.php')));\""
+        ],
         "post-autoload-dump": [
             "@php artisan config:clear",
             "@php artisan clear-compiled",
